@@ -33,3 +33,6 @@
 • 输出：
   • 检验报告
 7.数据结果结果数据合成拿来训练reasoning small model
+
+
+![image](https://github.com/user-attachments/assets/dc6def2d-6421-4f57-a65b-089a849f7fe3)
