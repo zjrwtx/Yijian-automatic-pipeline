@@ -12,6 +12,7 @@ from camel.toolkits import(
      ,FileWriteToolkit,
      BrowserToolkit,
      ThinkingToolkit,
+     RetrievalToolkit,
 )
 import asyncio
 from camel.types import ModelPlatformType, ModelType  
@@ -31,6 +32,7 @@ tools=[
     PubMedToolkit().get_tools,
     ArxivToolkit().get_tools,
     *FileWriteToolkit().get_tools(),
+    *RetrievalToolkit().get_tools(),
     # *BrowserToolkit(headless=False).get_tools(),
     # ThinkingToolkit().get_tools(),
 ]
@@ -251,6 +253,83 @@ model = ModelFactory.create(
 )
 # 创建工作团队
 
+# 创建URL内容检索器
+retriever_persona = (
+    '您是专门检索和分析医学资源URL内容的信息提取专家。'
+    '您能够从网页内容中提取关键医学信息，并将其整理成结构化的摘要。'
+)
+
+retriever_example = (
+    'URL内容检索结果\n'
+    '资源：[URL地址]\n'
+    '主要内容：\n'
+    '1. [关键信息1]\n'
+    '   - 详情：[详细描述]\n'
+    '2. [关键信息2]\n'
+    '   - 详情：[详细描述]\n'
+    '相关检验项目：\n'
+    '- [检验项目1]：[相关性说明]\n'
+    '- [检验项目2]：[相关性说明]'
+)
+
+retriever_criteria = textwrap.dedent(
+    """\
+    1. 准确提取URL中的医学相关内容
+    2. 重点关注与患者症状相关的检验信息
+    3. 提取检验项目的临床意义和适用情况
+    4. 整理信息为结构化格式
+    5. 保持医学术语的准确性
+    """
+)
+
+url_retriever = make_medical_agent(
+    "URL内容检索器",
+    retriever_persona,
+    retriever_example,
+    retriever_criteria,
+)
+
+# 创建医院检验项目匹配器
+matcher_persona = (
+    '您是专门将推荐检验项目与医院实际开展项目进行匹配的专家。'
+    '您了解医院检验科的能力范围，能够提供切实可行的检验开单建议。'
+)
+
+matcher_example = (
+    '医院检验项目匹配结果\n'
+    '可开展检验项目：\n'
+    '1. [检验名称]\n'
+    '   - 对应推荐项目：[原推荐项目]\n'
+    '   - 临床意义：[临床价值说明]\n'
+    '   - 注意事项：[采集或检验要求]\n'
+    '2. [检验名称]\n'
+    '   - 对应推荐项目：[原推荐项目]\n'
+    '   - 临床意义：[临床价值说明]\n'
+    '   - 注意事项：[采集或检验要求]\n'
+    '替代检验建议：\n'
+    '- 对于[无法开展的项目]，建议使用[替代项目]'
+)
+
+matcher_criteria = textwrap.dedent(
+    """\
+    1. 准确匹配推荐项目与医院可开展项目
+    2. 提供替代检验建议
+    3. 考虑检验的成本效益
+    4. 注明检验前准备要求
+    5. 按照临床优先级排序
+    """
+)
+
+hospital_matcher = make_medical_agent(
+    "医院检验项目匹配器",
+    matcher_persona,
+    matcher_example,
+    matcher_criteria,
+)
+
+
+# 创建工作团队
+
 workforce = Workforce(
     '医学检验工作流',
     coordinator_agent_kwargs = {"model": model},
@@ -266,10 +345,16 @@ workforce.add_single_agent_worker(
     '检验资料搜索器：根据分析结果搜索相关检验资料',
     worker=test_searcher,
 ).add_single_agent_worker(
+
+    '您是专门检索和分析医学资源URL内容的信息提取专家。',
+    worker=url_retriever,
+).add_single_agent_worker(
     '检验项目推荐器：推荐适当的诊断检验',
     worker=test_recommender,
+).add_single_agent_worker(
+    '医院检验项目匹配器：将推荐项目与医院实际项目匹配',
+    worker=hospital_matcher, 
 )
-
 
 # 更新process_clinical_case函数
 def process_clinical_case(conversation_text: str) -> str:
@@ -286,7 +371,9 @@ def process_clinical_case(conversation_text: str) -> str:
         content="通过实验室工作流处理此临床病例。"
         "首先总结临床对话。然后分析症状并建议潜在病症。"
         "并根据症状搜索搜索相关检验资料"
-        "接着推荐适当的实验室检验。记得语言都是中文",
+        "使用rag工具检索搜索到的url内容"
+        "接着推荐适当的实验室检验。记得语言都是中文"
+        "基于推荐的检验项目，再结合医院开展的检验项目进行最终的可开单的推荐",
         additional_info=conversation_text,
         id="0",
     )
