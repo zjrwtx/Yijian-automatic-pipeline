@@ -10,7 +10,8 @@ from camel.tasks import Task
 from camel.toolkits import(
      FunctionTool, SearchToolkit,PubMedToolkit,GoogleScholarToolkit,ArxivToolkit,SemanticScholarToolkit
      ,FileWriteToolkit,
-     BrowserToolkit
+     BrowserToolkit,
+     ThinkingToolkit,
 )
 import asyncio
 from camel.types import ModelPlatformType, ModelType  
@@ -30,7 +31,8 @@ tools=[
     PubMedToolkit().get_tools,
     ArxivToolkit().get_tools,
     *FileWriteToolkit().get_tools(),
-    *BrowserToolkit().get_tools(),
+    # *BrowserToolkit(headless=False).get_tools(),
+    # ThinkingToolkit().get_tools(),
 ]
 def make_medical_agent(
     role: str,
