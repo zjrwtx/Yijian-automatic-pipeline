@@ -16,7 +16,7 @@ from camel.toolkits import(
      FunctionTool, SearchToolkit,PubMedToolkit,GoogleScholarToolkit,ArxivToolkit,SemanticScholarToolkit
      ,FileWriteToolkit,
      BrowserToolkit,
-     ThinkingToolkit,
+    #  ThinkingToolkit,
      RetrievalToolkit,
      
 )
@@ -34,7 +34,8 @@ openai_api_key = os.getenv("OPENAI_API_KEY", "")
 os.environ["OPENAI_API_KEY"] = openai_api_key
 
 tools=[
-    SearchToolkit().search_duckduckgo,
+    # SearchToolkit().search_duckduckgo,
+    SearchToolkit().search_google,
     PubMedToolkit().get_tools,
     ArxivToolkit().get_tools,
     *FileWriteToolkit().get_tools(),
@@ -328,6 +329,7 @@ matcher_criteria = textwrap.dedent(
     3. 考虑检验的成本效益
     4. 注明检验前准备要求
     5. 按照临床优先级排序
+    一定要把推荐的项目都各个都医院开展的项目进行匹配
     医院的开展项目的地址如下：https://github.com/camel-ai/camel/wiki/Contributing-Guidlines
     """
 )
@@ -337,7 +339,6 @@ matcher_criteria = textwrap.dedent(
 
 
 hospital_matcher_tools = [
-   
    *RetrievalToolkit().get_tools(),
    *FileWriteToolkit().get_tools(),
  
