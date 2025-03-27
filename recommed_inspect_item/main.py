@@ -18,6 +18,7 @@ from camel.toolkits import(
      BrowserToolkit,
      ThinkingToolkit,
      RetrievalToolkit,
+     
 )
 import asyncio
 from camel.types import ModelPlatformType, ModelType  
@@ -63,11 +64,14 @@ def make_medical_agent(
         role_name="医学检验专业人员",
         content=msg_content,
     )
-
     model = ModelFactory.create(
-    model_platform=ModelPlatformType.GEMINI,
-    model_type=ModelType.GEMINI_2_5_PRO_EXP,
-    model_config_dict=GeminiConfig(temperature=0.2).as_dict(),
+    model_platform=ModelPlatformType.OPENAI,
+    model_type=ModelType.GPT_4O,
+    model_config_dict=ChatGPTConfig(temperature=0.2).as_dict(),
+    # model = ModelFactory.create(
+    # model_platform=ModelPlatformType.GEMINI,
+    # model_type=ModelType.GEMINI_2_5_PRO_EXP,
+    # model_config_dict=GeminiConfig(temperature=0.2).as_dict(),
 )
 
     agent = ChatAgent(
@@ -324,60 +328,60 @@ matcher_criteria = textwrap.dedent(
     3. 考虑检验的成本效益
     4. 注明检验前准备要求
     5. 按照临床优先级排序
+    医院的开展项目的地址如下：https://github.com/camel-ai/camel/wiki/Contributing-Guidlines
     """
 )
 
-hospital_matcher = make_medical_agent(
-    "医院检验项目匹配器",
-    matcher_persona,
-    matcher_example,
-    matcher_criteria,
-)
 
-#  # Add auto retriever
-# auto_retriever = AutoRetriever(
-#         vector_storage_local_path="local_data2/",
-#         storage_type=StorageType.QDRANT,
-#         embedding_model=OpenAIEmbedding())
 
-# retrieved_info = auto_retriever.run_vector_retriever(
-#     query=query,
-#     contents=[
-#         "local_data/camel_paper.pdf",  # example local path
-#         "https://github.com/camel-ai/camel/wiki/Contributing-Guidlines",  # example remote url
-#     ],
-#     top_k=1,
-#     return_detailed_info=False,
-#     similarity_threshold=0.5
-# )
 
-hybrid_retriever = HybridRetriever()
-hybrid_retriever.process(
-    content_input_path="https://en.wikipedia.org/wiki/King_Abdullah_University_of_Science_and_Technology"
-)
 
-retrieved_info = hybrid_retriever.query(
-    query=query,
-    top_k=5,
-    vector_retriever_top_k=10,
-    bm25_retriever_top_k=10,
-)
+hospital_matcher_tools = [
+   
+   *RetrievalToolkit().get_tools(),
+   *FileWriteToolkit().get_tools(),
+ 
+]
 
+# hospital_matcher_model = ModelFactory.create(
+#     model_platform=ModelPlatformType.GEMINI,
+#     model_type=ModelType.GEMINI_2_5_PRO_EXP,
+#     model_config_dict=GeminiConfig(temperature=0.2).as_dict(),)
 
 hospital_matcher_model = ModelFactory.create(
-    model_platform=ModelPlatformType.GEMINI,
-    model_type=ModelType.GEMINI_2_5_PRO_EXP,
-    model_config_dict=GeminiConfig(temperature=0.2).as_dict(),)
+    model_platform=ModelPlatformType.OPENAI,
+    model_type=ModelType.GPT_4O,
+    model_config_dict=ChatGPTConfig(temperature=0.2).as_dict(),)
+
+msg_content = textwrap.dedent(
+        f"""\
+        您是检验科的医疗专业人员。
+        您的角色：检验项目开单员
+        您的职责和特点：{matcher_persona}
+        输出格式示例：
+        {matcher_example}
+        您的分析标准：
+        {matcher_criteria}
+        """
+    )
 hospital_matcher=ChatAgent(
     system_message=BaseMessage.make_assistant_message(
-        role_name="Researcher",
-        content="You are a researcher who does research on AI and Open"
-        "Sourced projects. You use web search to stay updated on the "
-        "latest innovations and trends.",
+        role_name="检验项目开单员",
+        content=msg_content,
     ),
     model=hospital_matcher_model,
+    tools=hospital_matcher_tools,   
    
 )
+model = ModelFactory.create(
+    model_platform=ModelPlatformType.OPENAI,
+    model_type=ModelType.GPT_4O,
+    model_config_dict=ChatGPTConfig(temperature=0.2).as_dict())
+
+# model = ModelFactory.create(
+# model_platform=ModelPlatformType.GEMINI,
+# model_type=ModelType.GEMINI_2_5_PRO_EXP,
+# model_config_dict=GeminiConfig(temperature=0.2).as_dict(),)
 # 创建工作团队
 
 workforce = Workforce(
