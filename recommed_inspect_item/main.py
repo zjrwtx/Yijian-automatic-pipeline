@@ -1,8 +1,13 @@
 from getpass import getpass
 import os
 import textwrap
+from PIL.Image import OPEN
+from camel.retrievers import AutoRetriever
+from camel.types import StorageType
 from typing import List, Dict
 from dotenv import load_dotenv
+from camel.retrievers import HybridRetriever
+
 from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from camel.models import ModelFactory
@@ -17,7 +22,7 @@ from camel.toolkits import(
 import asyncio
 from camel.types import ModelPlatformType, ModelType  
 from camel.societies.workforce import Workforce
-from camel.configs import DeepSeekConfig,ChatGPTConfig
+from camel.configs import DeepSeekConfig,ChatGPTConfig,GeminiConfig
 
 load_dotenv()
 from camel.logger import set_log_level
@@ -60,10 +65,9 @@ def make_medical_agent(
     )
 
     model = ModelFactory.create(
-    model_platform=ModelPlatformType.OPENAI,
-    model_type="gpt-4o",
-    # 确保使用ollama版本>=0.5.1以支持结构化输出功能
-    model_config_dict={"temperature": 0.4,"max_tokens":4090},
+    model_platform=ModelPlatformType.GEMINI,
+    model_type=ModelType.GEMINI_2_5_PRO_EXP,
+    model_config_dict=GeminiConfig(temperature=0.2).as_dict(),
 )
 
     agent = ChatAgent(
@@ -78,6 +82,7 @@ def make_medical_agent(
 summarizer_persona = (
     '您是专门将医患对话转化为结构化临床记录的医疗文书。'
     '您专注于捕捉关键医疗信息、患者病史和临床观察结果。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 summarizer_example = (
@@ -98,6 +103,7 @@ summarizer_criteria = textwrap.dedent(
     3. 遵循标准临床文档格式
     4. 包含症状的时间信息
     5. 记录提及的任何过敏或药物
+    
     """
 )
 
@@ -112,6 +118,7 @@ clinical_summarizer = make_medical_agent(
 analyzer_persona = (
     '您是专门分析患者症状和病史以识别潜在病症的临床分析师。'
     '您运用模式识别和医学知识来建议可能的诊断。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 analyzer_example = (
@@ -147,6 +154,7 @@ clinical_analyzer = make_medical_agent(
 search_persona = (
     '您是专门根据临床分析结果搜索相关检验资料的医学信息专家。'
     '您使用多种学术资源来查找最新的检验指南和研究资料。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 search_example = (
@@ -182,6 +190,7 @@ test_searcher = make_medical_agent(
 recommender_persona = (
     '您是根据临床表现推荐适当诊断检验的实验室检验专家。'
     '您始终保持对当前检验指南和方案的了解。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 recommender_example = (
@@ -216,6 +225,7 @@ test_recommender = make_medical_agent(
 report_persona = (
     '您是分析检验结果并生成全面实验室报告的检验报告专家。'
     '您确保结果的准确解释和清晰传达。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 report_example = (
@@ -245,18 +255,14 @@ report_generator = make_medical_agent(
     report_example,
     report_criteria,
 )
-model = ModelFactory.create(
-    model_platform=ModelPlatformType.OPENAI,
-    model_type="gpt-4o",
-    # 确保使用ollama版本>=0.5.1以支持结构化输出功能
-    model_config_dict={"temperature": 0.4,"max_tokens":4090},
-)
+
 # 创建工作团队
 
 # 创建URL内容检索器
 retriever_persona = (
     '您是专门检索和分析医学资源URL内容的信息提取专家。'
     '您能够从网页内容中提取关键医学信息，并将其整理成结构化的摘要。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 retriever_example = (
@@ -293,6 +299,7 @@ url_retriever = make_medical_agent(
 matcher_persona = (
     '您是专门将推荐检验项目与医院实际开展项目进行匹配的专家。'
     '您了解医院检验科的能力范围，能够提供切实可行的检验开单建议。'
+    '您需要将内容保存为txt文件到本地'
 )
 
 matcher_example = (
@@ -327,7 +334,50 @@ hospital_matcher = make_medical_agent(
     matcher_criteria,
 )
 
+#  # Add auto retriever
+# auto_retriever = AutoRetriever(
+#         vector_storage_local_path="local_data2/",
+#         storage_type=StorageType.QDRANT,
+#         embedding_model=OpenAIEmbedding())
 
+# retrieved_info = auto_retriever.run_vector_retriever(
+#     query=query,
+#     contents=[
+#         "local_data/camel_paper.pdf",  # example local path
+#         "https://github.com/camel-ai/camel/wiki/Contributing-Guidlines",  # example remote url
+#     ],
+#     top_k=1,
+#     return_detailed_info=False,
+#     similarity_threshold=0.5
+# )
+
+hybrid_retriever = HybridRetriever()
+hybrid_retriever.process(
+    content_input_path="https://en.wikipedia.org/wiki/King_Abdullah_University_of_Science_and_Technology"
+)
+
+retrieved_info = hybrid_retriever.query(
+    query=query,
+    top_k=5,
+    vector_retriever_top_k=10,
+    bm25_retriever_top_k=10,
+)
+
+
+hospital_matcher_model = ModelFactory.create(
+    model_platform=ModelPlatformType.GEMINI,
+    model_type=ModelType.GEMINI_2_5_PRO_EXP,
+    model_config_dict=GeminiConfig(temperature=0.2).as_dict(),)
+hospital_matcher=ChatAgent(
+    system_message=BaseMessage.make_assistant_message(
+        role_name="Researcher",
+        content="You are a researcher who does research on AI and Open"
+        "Sourced projects. You use web search to stay updated on the "
+        "latest innovations and trends.",
+    ),
+    model=hospital_matcher_model,
+   
+)
 # 创建工作团队
 
 workforce = Workforce(
@@ -369,11 +419,11 @@ def process_clinical_case(conversation_text: str) -> str:
     """
     task = Task(
         content="通过实验室工作流处理此临床病例。"
-        "首先总结临床对话。然后分析症状并建议潜在病症。"
-        "并根据症状搜索搜索相关检验资料"
-        "使用rag工具检索搜索到的url内容"
-        "接着推荐适当的实验室检验。记得语言都是中文"
-        "基于推荐的检验项目，再结合医院开展的检验项目进行最终的可开单的推荐",
+        "step1:总结临床对话。然后分析症状并建议潜在病症。"
+        "step2:根据症状搜索搜索相关检验资料"
+        "step3:使用rag工具检索搜索到的url内容"
+        "step4:接着推荐适当的实验室检验。记得语言都是中文"
+        "step5:基于推荐的检验项目，再结合医院开展的检验项目进行最终的可开单的推荐",
         additional_info=conversation_text,
         id="0",
     )
