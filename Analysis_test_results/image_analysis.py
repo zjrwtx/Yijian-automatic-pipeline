@@ -18,43 +18,44 @@ from camel.models import ModelFactory
 from camel.toolkits import ImageAnalysisToolkit
 from camel.types import ModelPlatformType, ModelType
 
-model = ModelFactory.create(
-    model_platform=ModelPlatformType.DEFAULT,
-    model_type=ModelType.DEFAULT,
-)
+def analyze_images(image_paths):
+    """
+    分析给定的图片路径列表，返回AI分析结果
+    
+    Args:
+        image_paths (list): 图片路径列表
+        
+    Returns:
+        str: AI分析结果
+    """
+    model = ModelFactory.create(
+        model_platform=ModelPlatformType.DEFAULT,
+        model_type=ModelType.DEFAULT,
+    )
 
-image_analysis_toolkit = ImageAnalysisToolkit(model=model)
+    image_analysis_toolkit = ImageAnalysisToolkit(model=model)
 
-agent = ChatAgent(
-    system_message="You are a helpful assistant.",
-    model=model,
-    tools=[*image_analysis_toolkit.get_tools()],
-)
+    agent = ChatAgent(
+        system_message="You are a helpful assistant.",
+        model=model,
+        tools=[*image_analysis_toolkit.get_tools()],
+    )
 
+    # 构建图片路径字符串
+    image_paths_str = "\n".join([f"{i+1}、{path}" for i, path in enumerate(image_paths)])
+    
+    user_msg = BaseMessage.make_user_message(
+        role_name="User",
+        content=f'''
+            把以下图片的内容进行美观格式的输出：
+            {image_paths_str}
+            ''',
+    )
+    response = agent.step(user_msg)
+    return response.msgs[0].content
 
-user_msg = BaseMessage.make_user_message(
-    role_name="User",
-    content='''
-        The image link is: https://upload.wikimedia.org/wikipedia/commons/
-        thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/
-        2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg
-        What's in this image? You must use image analysis to help me.
-        ''',
-)
-response = agent.step(user_msg)
-print(response.msgs[0].content)
-""""
-===========================================================================
-The image depicts a serene landscape featuring a wooden boardwalk that leads 
-through a lush, green marsh or meadow. The boardwalk is centrally positioned, 
-extending into the distance and inviting viewers to imagine walking along it. 
-On either side of the boardwalk, tall grass and various vegetation create a 
-vibrant green expanse.
-
-In the background, there are clusters of trees and shrubs, adding depth to the 
-scene. The sky above is mostly clear with a few scattered clouds, showcasing a 
-gradient of blue hues. The overall atmosphere is tranquil and natural, 
-suggesting a peaceful outdoor setting, with soft lighting that likely 
-indicates early morning or late afternoon."
-============================================================================
-"""
+if __name__ == "__main__":
+    # 测试代码
+    test_images = ["i01.png", "i02.png", "i03.png"]
+    result = analyze_images(test_images)
+    print(result)

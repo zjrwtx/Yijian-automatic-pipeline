@@ -12,16 +12,41 @@
 # limitations under the License.
 # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
 from colorama import Fore
+import sys
+import os
 
 from camel.configs import ChatGPTConfig
 from camel.models import ModelFactory
 from camel.societies import RolePlaying
 from camel.types import ModelPlatformType, ModelType
 from camel.utils import print_text_animated
+from image_analysis import analyze_images
 
+def get_image_paths():
+    """获取用户输入的图片路径"""
+    print(Fore.CYAN + "请输入图片路径（每行一个，输入空行结束）：")
+    paths = []
+    while True:
+        path = input().strip()
+        if not path:
+            break
+        if os.path.exists(path):
+            paths.append(path)
+        else:
+            print(Fore.RED + f"警告：文件 {path} 不存在，已跳过")
+    return paths
 
 def main() -> None:
-    task_prompt = "分析以下医学检验报告并给出诊断结论。"
+    # 获取图片路径并分析
+    image_paths = get_image_paths()
+    if image_paths:
+        print(Fore.YELLOW + "正在分析图片...")
+        image_analysis_result = analyze_images(image_paths)
+        patient_info = f"\n\n图片分析结果：\n{image_analysis_result}"
+    else:
+        patient_info = "\n\n没有提供图片进行分析。"
+    
+    task_prompt = "分析以下医学检验报告并给出诊断结论。" + patient_info
     model = ModelFactory.create(
         model_platform=ModelPlatformType.DEFAULT,
         model_type=ModelType.DEFAULT,
