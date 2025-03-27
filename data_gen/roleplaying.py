@@ -1,12 +1,16 @@
-
 from colorama import Fore
 
 from camel.societies import RolePlaying
 from camel.utils import print_text_animated
 
+def patient_note():
+    patient_note = input("请输入患者的病历：")
+    return patient_note
 
+
+patient_note=patient_note()
 def main(model=None, chat_turn_limit=50) -> None:
-    task_prompt = "模拟一个医生和一个患者的对话，以了解患者的病情。"
+    task_prompt = "根据给出病例反向模拟一个医生和一个患者的对话，医生问问题，患者回答问题。模拟的对话要尽可能的详细，包括医生的问诊过程和患者的回答过程。以下是病例内容:"+patient_note
     role_play_session = RolePlaying(
         assistant_role_name="医生",
         assistant_agent_kwargs=dict(model=model),
@@ -35,6 +39,8 @@ def main(model=None, chat_turn_limit=50) -> None:
 
     n = 0
     input_msg = role_play_session.init_chat()
+    assistant_history = ""
+    
     while n < chat_turn_limit:
         n += 1
         assistant_response, user_response = role_play_session.step(input_msg)
@@ -58,6 +64,8 @@ def main(model=None, chat_turn_limit=50) -> None:
             )
             break
 
+        assistant_history += assistant_response.msg.content + "\n"
+
         print_text_animated(
             Fore.BLUE + f"AI User:\n\n{user_response.msg.content}\n"
         )
@@ -70,6 +78,9 @@ def main(model=None, chat_turn_limit=50) -> None:
             break
 
         input_msg = assistant_response.msg
+
+    print("\n完整的Assistant对话历史：")
+    print(assistant_history)
 
 
 if __name__ == "__main__":
