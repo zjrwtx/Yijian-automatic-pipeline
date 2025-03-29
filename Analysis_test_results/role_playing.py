@@ -14,14 +14,83 @@
 from colorama import Fore
 import sys
 import os
-
+import asyncio
+from pathlib import Path
+from camel.toolkits import (
+    AudioAnalysisToolkit,
+    CodeExecutionToolkit,
+    ExcelToolkit,
+    ImageAnalysisToolkit,
+    SearchToolkit,
+    VideoAnalysisToolkit,
+    BrowserToolkit,
+    FileWriteToolkit,
+    # MCPToolkit,
+)
 from camel.configs import ChatGPTConfig
 from camel.models import ModelFactory
 from camel.societies import RolePlaying
 from camel.types import ModelPlatformType, ModelType
 from camel.utils import print_text_animated
 from image_analysis import analyze_images
+# config_path = Path(__file__).parent / "mcp_servers_config.json"
+# mcp_toolkit = MCPToolkit(config_path=str(config_path))
+models = {
+        "user": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+        "assistant": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+        "browsing": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+        "planning": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+        "video": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+        "image": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+        "document": ModelFactory.create(
+            model_platform=ModelPlatformType.OPENAI,
+            model_type=ModelType.GPT_4O,
+            model_config_dict={"temperature": 0},
+        ),
+    }
 
+
+    # Configure toolkits
+tools = [
+    *BrowserToolkit(
+        headless=False,  # Set to True for headless mode (e.g., on remote servers)
+        web_agent_model=models["browsing"],
+        planning_agent_model=models["planning"],
+    ).get_tools(),
+    *VideoAnalysisToolkit(model=models["video"]).get_tools(),
+    *AudioAnalysisToolkit().get_tools(),  # This requires OpenAI Key
+    *CodeExecutionToolkit(sandbox="subprocess", verbose=True).get_tools(),
+    *ImageAnalysisToolkit(model=models["image"]).get_tools(),
+    SearchToolkit().search_duckduckgo,
+    SearchToolkit().search_google,  # Comment this out if you don't have google search
+    *ExcelToolkit().get_tools(),
+    *FileWriteToolkit(output_dir="./").get_tools(),
+    # *mcp_toolkit.get_tools()
+]
 def get_image_paths():
     """获取用户输入的图片路径"""
     print(Fore.CYAN + "请输入图片路径（每行一个，输入空行结束）：")
@@ -37,6 +106,8 @@ def get_image_paths():
     return paths
 
 def main() -> None:
+    
+    # await mcp_toolkit.connect()
     # 获取图片路径并分析
     image_paths = get_image_paths()
     if image_paths:
@@ -45,26 +116,29 @@ def main() -> None:
         patient_info = f"\n\n图片分析结果：\n{image_analysis_result}"
     else:
         patient_info = "\n\n没有提供图片进行分析。"
-    
-    task_prompt = "分析以下医学检验报告并给出诊断结论。" + patient_info
+    input_other_patient_note = input("请输入其他患者信息：")
+    task_prompt = "分析以下医学检验结果，逐步思考后生成最终的带有诊断和建议等信息的详细高质量检验报告，不要进行任何多余的步骤，且保存最终分析好的检验报告为txt文件到本地" + patient_info + "\n\n其他患者信息：" + input_other_patient_note
     model = ModelFactory.create(
         model_platform=ModelPlatformType.DEFAULT,
         model_type=ModelType.DEFAULT,
         model_config_dict=ChatGPTConfig(temperature=0.8, n=3).as_dict(),
     )
-    assistant_agent_kwargs = dict(model=model)
-    user_agent_kwargs = dict(model=model)
+    
+    # Configure agent roles and parameters
+    user_agent_kwargs = {"model": models["user"]}
+    assistant_agent_kwargs = {"model": models["assistant"], "tools": tools}
     critic_kwargs = dict(verbose=True)
     role_play_session = RolePlaying(
         "医学检验教授",
         "检验人员",
         critic_role_name="临床专家",
         task_prompt=task_prompt,
-        with_task_specify=True,
-        with_critic_in_the_loop=True,
+        with_task_specify=False,
+        with_critic_in_the_loop=False,
         assistant_agent_kwargs=assistant_agent_kwargs,
         user_agent_kwargs=user_agent_kwargs,
         critic_kwargs=critic_kwargs,
+        output_language="中文",
     )
 
     print(
@@ -127,3 +201,9 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+

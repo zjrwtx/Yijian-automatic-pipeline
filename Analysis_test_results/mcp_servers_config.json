@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "server-sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/server-sequential-thinking",
+        "--config",
+        "{}"
+      ]
+    },
+    "mcp-server-hotnews": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@wopal/mcp-server-hotnews",
+        "--key",
+        "09725742-43f0-4274-bb4e-dbbbc5dfb7a9"
+      ]
+    }
+  }
+}
