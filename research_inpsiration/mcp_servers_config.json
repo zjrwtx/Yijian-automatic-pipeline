@@ -33,6 +33,14 @@
                 "--key",
                 "09725742-43f0-4274-bb4e-dbbbc5dfb7a9"
               ]
+            },
+            "sqlite": {
+              "command": "uvx",
+              "args": ["mcp-server-sqlite", "--db-path", "./test.db"]
+            },
+            "playwright": {
+              "command": "npx",
+              "args": ["-y", "@executeautomation/playwright-mcp-server"]
             }
        
     
