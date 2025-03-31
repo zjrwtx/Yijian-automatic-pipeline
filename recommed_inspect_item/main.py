@@ -330,7 +330,7 @@ matcher_criteria = textwrap.dedent(
     4. 注明检验前准备要求
     5. 按照临床优先级排序
     一定要把推荐的项目都各个都医院开展的项目进行匹配
-    医院的开展项目的地址如下：https://github.com/camel-ai/camel/wiki/Contributing-Guidlines
+    医院的开展项目的地址如下：https://raw.githubusercontent.com/zjrwtx/alldata/refs/heads/main/jianyan.md
     """
 )
 

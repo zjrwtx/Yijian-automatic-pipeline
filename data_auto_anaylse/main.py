@@ -13,19 +13,16 @@ from camel.messages import BaseMessage
 from camel.models import ModelFactory
 from camel.tasks import Task
 from camel.toolkits import(
-     FunctionTool, SearchToolkit,PubMedToolkit,GoogleScholarToolkit,ArxivToolkit,SemanticScholarToolkit
-     ,FileWriteToolkit,
-     BrowserToolkit,
+     SearchToolkit, PubMedToolkit, GoogleScholarToolkit, ArxivToolkit, SemanticScholarToolkit,
+     FileWriteToolkit,
      RetrievalToolkit,
      CodeExecutionToolkit,
      ExcelToolkit
-     
-     
 )
 import asyncio
 from camel.types import ModelPlatformType, ModelType  
 from camel.societies.workforce import Workforce
-from camel.configs import DeepSeekConfig,ChatGPTConfig,GeminiConfig
+from camel.configs import DeepSeekConfig, ChatGPTConfig, GeminiConfig
 
 load_dotenv()
 from camel.logger import set_log_level
@@ -34,8 +31,8 @@ set_log_level(level="DEBUG")
 # 配置API密钥
 openai_api_key = os.getenv("OPENAI_API_KEY", "")
 os.environ["OPENAI_API_KEY"] = openai_api_key
-# tools
 
+# tools
 tools=[
     SearchToolkit().search_google,
     PubMedToolkit().get_tools,
@@ -45,7 +42,8 @@ tools=[
     *CodeExecutionToolkit(verbose=True).get_tools(),
     *ExcelToolkit().get_tools()
 ]
-def make_weight_management_agent(
+
+def make_lab_analysis_agent(
     role: str,
     persona: str,
     example_output: str,
@@ -53,7 +51,7 @@ def make_weight_management_agent(
 ) -> ChatAgent:
     msg_content = textwrap.dedent(
         f"""\
-        您是体重管理领域的专业人员。
+        您是检验科数据分析与研究领域的专业人员。
         您的角色：{role}
         您的职责和特点：{persona}
         输出格式示例：
@@ -64,14 +62,14 @@ def make_weight_management_agent(
     )
 
     sys_msg = BaseMessage.make_assistant_message(
-        role_name="体重管理专业人员",
+        role_name="检验科数据分析专家",
         content=msg_content,
     )
     model = ModelFactory.create(
-    model_platform=ModelPlatformType.OPENAI,
-    model_type=ModelType.GPT_4O,
-    model_config_dict=ChatGPTConfig(temperature=0.2).as_dict(),
-)
+        model_platform=ModelPlatformType.OPENAI,
+        model_type=ModelType.GPT_4O,
+        model_config_dict=ChatGPTConfig(temperature=0.2).as_dict(),
+    )
 
     agent = ChatAgent(
         system_message=sys_msg,
@@ -81,46 +79,86 @@ def make_weight_management_agent(
 
     return agent
 
-# 创建用户信息分析师
-profile_analyzer_persona = (
-    '您是专门分析用户基本情况和健康数据的体重管理分析师。'
-    '您专注于捕捉关键健康指标、生活习惯和体重历史记录。'
+# 创建患者基本信息分析师
+patient_analyzer_persona = (
+    '您是专门分析患者基本信息和临床数据的检验分析师。'
+    '您专注于捕捉关键人口统计学特征、既往病史和临床表现。'
     '您需要将内容保存为txt文件到本地'
 )
 
-profile_analyzer_example = (
-    '用户信息分析\n'
+patient_analyzer_example = (
+    '患者信息分析\n'
     '基本信息：\n'
-    '- 年龄：[用户年龄]\n'
-    '- 性别：[用户性别]\n'
-    '- 身高：[用户身高]\n'
-    '- 当前体重：[当前体重]\n'
-    '- BMI指数：[计算结果]\n'
-    '体重历史：\n'
-    '- [过去体重变化记录]\n'
-    '健康状况：\n'
-    '- [相关健康状况概述]\n'
-    '生活习惯：\n'
-    '- 饮食习惯：[描述]\n'
-    '- 运动习惯：[描述]\n'
-    '- 睡眠模式：[描述]\n'
+    '- 年龄：[患者年龄]\n'
+    '- 性别：[患者性别]\n'
+    '- 入院诊断：[诊断信息]\n'
+    '- 主诉：[主诉内容]\n'
+    '既往史：\n'
+    '- [过往病史记录]\n'
+    '实验室检查概述：\n'
+    '- [主要异常指标列表]\n'
+    '临床相关性：\n'
+    '- [检验结果与临床表现的关联分析]\n'
 )
 
-profile_analyzer_criteria = textwrap.dedent(
+patient_analyzer_criteria = textwrap.dedent(
     """\
-    1. 收集完整的用户基本信息
-    2. 计算BMI和其他相关健康指标
-    3. 记录用户的体重历史变化
-    4. 分析当前生活习惯模式
-    5. 识别可能影响体重管理的健康因素
+    1. 全面收集患者的基本人口统计学数据
+    2. 梳理主要诊断和临床症状
+    3. 总结关键的既往病史信息
+    4. 提取主要的异常检验指标
+    5. 分析检验结果与临床表现的相关性
     """
 )
 
-profile_analyzer = make_weight_management_agent(
-    "用户信息分析师",
-    profile_analyzer_persona,
-    profile_analyzer_example,
-    profile_analyzer_criteria,
+patient_analyzer = make_lab_analysis_agent(
+    "患者基本信息分析师",
+    patient_analyzer_persona,
+    patient_analyzer_example,
+    patient_analyzer_criteria,
+)
+
+# 创建检验指标分析师
+lab_indicator_analyzer_persona = (
+    '您是专门分析检验指标结果和临床意义的检验专家。'
+    '您运用实验室医学知识评估异常检验值的临床重要性并提供解释。'
+    '您需要将内容保存为txt文件到本地'
+)
+
+lab_indicator_analyzer_example = (
+    '检验指标分析报告\n'
+    '异常指标总结：\n'
+    '- 指标1：[异常值] [参考范围] [异常程度评估]\n'
+    '- 指标2：[异常值] [参考范围] [异常程度评估]\n'
+    '分类解读：\n'
+    '1. 肝功能相关：\n'
+    '   - [异常指标及其临床意义]\n'
+    '2. 肾功能相关：\n'
+    '   - [异常指标及其临床意义]\n'
+    '3. 血细胞相关：\n'
+    '   - [异常指标及其临床意义]\n'
+    '指标间关联性：\n'
+    '- [相互关联的指标组及其临床意义]\n'
+    '建议进一步检查：\n'
+    '1. [建议1]：[理由]\n'
+    '2. [建议2]：[理由]\n'
+)
+
+lab_indicator_analyzer_criteria = textwrap.dedent(
+    """\
+    1. 全面评估异常检验指标的临床意义
+    2. 按系统或功能对异常指标进行分类
+    3. 分析指标间的相互关系和临床相关性
+    4. 评估异常指标的严重程度和紧急程度
+    5. 提供有针对性的进一步检查建议
+    """
+)
+
+lab_indicator_analyzer = make_lab_analysis_agent(
+    "检验指标分析师",
+    lab_indicator_analyzer_persona,
+    lab_indicator_analyzer_example,
+    lab_indicator_analyzer_criteria,
 )
 
 # 创建饮食分析师
@@ -159,11 +197,338 @@ diet_analyzer_criteria = textwrap.dedent(
     """
 )
 
-diet_analyzer = make_weight_management_agent(
+diet_analyzer = make_lab_analysis_agent(
     "饮食分析师",
     diet_analyzer_persona,
     diet_analyzer_example,
     diet_analyzer_criteria,
+)
+
+# 创建分子诊断分析专家
+molecular_diagnostics_persona = (
+    '您是检验医学中分子诊断领域的专家，专长于解读分子检测数据和基因变异信息。'
+    '您利用分子生物学知识分析基因表达、突变谱和分子标志物数据。'
+    '您能够整合分子检测结果与传统检验项目进行综合分析。'
+    '您需要将内容保存为txt文件到本地'
+)
+
+molecular_diagnostics_example = (
+    '分子诊断分析报告\n\n'
+    '分子检测数据概述：\n'
+    '1. 基因变异情况：\n'
+    '   - 关键突变位点：[突变列表及其功能]\n'
+    '   - 突变负荷分析：[评分结果及解释]\n'
+    '   - 变异临床意义：[解释]\n\n'
+    '2. 基因表达特征：\n'
+    '   - 差异表达基因：[上/下调基因列表]\n'
+    '   - 表达谱特征：[关键模式及功能]\n'
+    '   - 表达-表型关联：[相关性分析]\n\n'
+    '分子与传统检验整合：\n'
+    '1. 生化指标与分子标志物相关性：\n'
+    '   - [关键相关性发现及意义]\n'
+    '2. 分子分型与临床表现：\n'
+    '   - [分型结果及临床关联]\n\n'
+    '分子病理机制推断：\n'
+    '1. 信号通路异常：\n'
+    '   - [异常通路及影响]\n'
+    '2. 分子病理过程：\n'
+    '   - [推断的分子机制]\n\n'
+    '精准医学应用建议：\n'
+    '1. 靶向治疗相关性：[建议]\n'
+    '2. 药物反应预测：[预测结果]\n'
+    '3. 分子监测方案：[监测建议]\n\n'
+    '科研创新方向：\n'
+    '1. 新型分子标志物：[潜在标志物及意义]\n'
+    '2. 机制研究方向：[建议研究方向]\n'
+)
+
+molecular_diagnostics_criteria = textwrap.dedent(
+    """\
+    1. 深入解读分子检测数据的临床意义
+    2. 整合分子数据与传统检验指标
+    3. 识别具有诊断和预后价值的分子特征
+    4. 推断潜在的分子病理机制
+    5. 提供精准医学应用的具体建议
+    6. 发现分子诊断领域的研究创新点
+    7. 评估分子检测结果的质量和可靠性
+    """
+)
+
+molecular_diagnostics_analyst = make_lab_analysis_agent(
+    "分子诊断分析专家",
+    molecular_diagnostics_persona,
+    molecular_diagnostics_example,
+    molecular_diagnostics_criteria,
+)
+
+# 创建参考值研究专家
+reference_value_researcher_persona = (
+    '您是检验医学中参考值和临界值研究的专家，专长于建立和优化检验指标的参考区间。'
+    '您分析人口统计学因素对参考值的影响，并构建个体化参考区间模型。'
+    '您的专长包括分析检验指标的生物学变异和临床决策临界值的确定。'
+    '您需要将内容保存为txt文件到本地'
+)
+
+reference_value_researcher_example = (
+    '参考值研究分析报告\n\n'
+    '人群参考区间分析：\n'
+    '1. 现有参考区间评估：\n'
+    '   - 指标1：[当前区间] - [适用性评估]\n'
+    '   - 指标2：[当前区间] - [适用性评估]\n\n'
+    '2. 特定人群参考区间：\n'
+    '   - 性别差异：[分析结果]\n'
+    '   - 年龄分层：[分析结果]\n'
+    '   - 民族/地区差异：[分析结果]\n\n'
+    '个体化参考区间模型：\n'
+    '1. 动态参考区间：\n'
+    '   - 模型设计：[描述]\n'
+    '   - 影响因素：[因素列表及权重]\n'
+    '   - 预测精度：[评估结果]\n\n'
+    '2. 患者自身参考变化：\n'
+    '   - 变化值临界点：[数值及意义]\n'
+    '   - 时间动态模式：[模式描述]\n\n'
+    '临床决策临界值：\n'
+    '1. 诊断临界值：\n'
+    '   - 指标1：[建议值] - [依据]\n'
+    '   - 指标2：[建议值] - [依据]\n\n'
+    '2. 治疗干预临界值：\n'
+    '   - 指标1：[建议值] - [依据]\n'
+    '   - 指标2：[建议值] - [依据]\n\n'
+    '研究创新点：\n'
+    '1. 改进的参考区间方法：[描述]\n'
+    '2. 新的临界值确定策略：[描述]\n'
+    '3. 个体化参考值应用：[潜在应用场景]\n'
+)
+
+reference_value_researcher_criteria = textwrap.dedent(
+    """\
+    1. 评估现有参考区间的适用性和局限性
+    2. 分析人口统计学因素对参考值的影响
+    3. 构建考虑多因素的个体化参考区间模型
+    4. 研究检验指标的生物学变异规律
+    5. 确定具有临床意义的决策临界值
+    6. 提出参考值研究的创新方法和策略
+    7. 探索参考区间在精准医学中的应用
+    """
+)
+
+reference_value_researcher = make_lab_analysis_agent(
+    "参考值研究专家",
+    reference_value_researcher_persona,
+    reference_value_researcher_example,
+    reference_value_researcher_criteria,
+)
+
+# 创建科研灵感生成器
+research_inspiration_generator_persona = (
+    '您是整合各专家意见提炼科研灵感和创新方向的研究思想家。'
+    '您创建有价值、可行且具有创新性的检验医学研究方向和假设。'
+    '您需要将内容保存为txt文件到本地'
+)
+
+research_inspiration_generator_example = (
+    '检验医学科研灵感报告\n'
+    '核心研究思路：\n'
+    '- [主要科研灵感概述]\n'
+    '创新研究方向：\n'
+    '1. 研究方向1：\n'
+    '   - 研究假设：[详细描述]\n'
+    '   - 创新点：[说明]\n'
+    '   - 潜在影响：[预期影响]\n'
+    '   - 相关前沿文献：[关键文献]\n'
+    '2. 研究方向2：\n'
+    '   - 研究假设：[详细描述]\n'
+    '   - 创新点：[说明]\n'
+    '   - 潜在影响：[预期影响]\n'
+    '   - 相关前沿文献：[关键文献]\n'
+    '方法学创新：\n'
+    '- [方法学创新点1]\n'
+    '- [方法学创新点2]\n'
+    '研究设计框架：\n'
+    '1. 研究方向1设计：\n'
+    '   - 研究对象：[描述]\n'
+    '   - 关键变量：[列表]\n'
+    '   - 分析方法：[描述]\n'
+    '   - 预期结果：[描述]\n'
+    '2. 研究方向2设计：\n'
+    '   - [类似结构]\n'
+    '合作与资源需求：\n'
+    '- [所需专业领域]\n'
+    '- [关键技术平台]\n'
+    '- [数据资源需求]\n'
+)
+
+research_inspiration_generator_criteria = textwrap.dedent(
+    """\
+    1. 整合所有专家的见解提炼创新科研方向
+    2. 提出具有原创性和可行性的研究假设
+    3. 确保研究方向具有临床转化价值
+    4. 考虑当前技术限制和解决方案
+    5. 提供清晰的研究设计框架
+    6. 识别方法学创新点和技术突破口
+    7. 评估研究方向的潜在学术和临床影响
+    """
+)
+
+research_inspiration_generator = make_lab_analysis_agent(
+    "科研灵感生成器",
+    research_inspiration_generator_persona,
+    research_inspiration_generator_example,
+    research_inspiration_generator_criteria,
+)
+
+# 创建检验数据生成器
+lab_data_generator_persona = (
+    '您是检验医学研究的数据科学家，专门负责生成模拟检验数据用于模型训练和测试。'
+    '您能够创建多种不同格式的合成检验数据，包括使用不同分隔符、不同命名约定的CSV文件。'
+    '您可以生成多样化的数据结构，模拟不同检验项目和临床特征的组合。'
+    '您的数据可以包括常规生化、血常规、凝血、免疫、分子诊断等多种检验类型。'
+    '您需要使用CodeExecutionToolkit来执行Python代码，生成CSV格式的数据集。'
+    '您的代码应该能生成临床上合理的检验数据，反映真实的生理病理关系。'
+    '您需要将内容保存为txt文件到本地，并确保生成的CSV文件路径明确。'
+)
+
+lab_data_generator_example = (
+    '检验数据生成报告\n\n'
+    '生成的数据集描述：\n'
+    '- 数据集目的：[描述]\n'
+    '- 数据格式特点：[描述，例如使用的分隔符、命名约定等]\n'
+    '- 病例数量：[数量]\n'
+    '- 检验项目数：[数量]\n'
+    '- 主要检验类别：[列表]\n\n'
+    '模拟疾病特征：\n'
+    '- 疾病类型：[模拟的疾病类型]\n'
+    '- 关键异常指标：[关键指标及其变化特征]\n'
+    '- 疾病进展模式：[描述]\n\n'
+    '数据关联性设计：\n'
+    '- 指标间相关关系：[描述]\n'
+    '- 生理病理学关系：[描述]\n'
+    '- 时间序列特性：[描述]\n\n'
+    '数据格式变体：\n'
+    '- 使用的分隔符：[分隔符]\n'
+    '- 特殊列命名规则：[规则描述]\n'
+    '- 数据编码方式：[编码]\n\n'
+    '数据生成代码执行结果：\n'
+    '[代码执行输出内容]\n\n'
+    '生成的CSV文件路径：[文件路径]\n\n'
+    '数据字典：\n'
+    '- 列名1：[描述]\n'
+    '- 列名2：[描述]\n'
+    '...'
+)
+
+lab_data_generator_criteria = textwrap.dedent(
+    """\
+    1. 使用CodeExecutionToolkit执行Python代码生成检验数据
+    2. 生成多种不同格式的CSV文件，包括不同分隔符、不同命名约定
+    3. 模拟真实检验数据的分布特征和正常/异常范围
+    4. 创建具有生理病理学合理性的指标相关关系
+    5. 包含多种类型的检验项目(生化、血常规、凝血等)
+    6. 模拟不同疾病状态的检验特征模式
+    7. 生成具有时间序列特性的纵向数据
+    8. 确保数据包含足够的变异性和模式，以便进行统计分析
+    9. 提供清晰的数据字典和元数据
+    10. 将生成的CSV保存在容易访问的路径
+    11. 确保生成的数据适合后续建模和分析
+    """
+)
+
+lab_data_generator = make_lab_analysis_agent(
+    "检验数据生成器",
+    lab_data_generator_persona,
+    lab_data_generator_example,
+    lab_data_generator_criteria,
+)
+# 创建疾病模式分析师
+disease_pattern_analyzer_persona = (
+    '您是专门分析检验数据中疾病特征模式的专家。'
+    '您根据检验结果的模式识别可能的疾病类型和进展阶段。'
+    '您需要将内容保存为txt文件到本地'
+)
+
+disease_pattern_analyzer_example = (
+    '疾病模式分析报告\n'
+    '检验模式特征：\n'
+    '- 模式1：[相关指标组合] - [可能的临床意义]\n'
+    '- 模式2：[相关指标组合] - [可能的临床意义]\n'
+    '可能的疾病类型：\n'
+    '1. [疾病1]：\n'
+    '   - 支持证据：[相关检验结果]\n'
+    '   - 符合程度：[评估]\n'
+    '   - 鉴别要点：[关键区分特征]\n'
+    '2. [疾病2]：\n'
+    '   - 支持证据：[相关检验结果]\n'
+    '   - 符合程度：[评估]\n'
+    '   - 鉴别要点：[关键区分特征]\n'
+    '疾病进展评估：\n'
+    '- 疾病阶段：[评估结果]\n'
+    '- 活动性指标：[相关指标及意义]\n'
+    '- 严重程度：[评估结果]\n'
+    '进一步诊断建议：\n'
+    '- [建议1]\n'
+    '- [建议2]\n'
+)
+
+disease_pattern_analyzer_criteria = textwrap.dedent(
+    """\
+    1. 识别检验结果中具有特异性的疾病模式
+    2. 分析可能的疾病类型及其可能性
+    3. 评估疾病的活动性和进展阶段
+    4. 提供关键鉴别诊断要点
+    5. 建议有针对性的进一步确诊措施
+    """
+)
+
+disease_pattern_analyzer = make_lab_analysis_agent(
+    "疾病模式分析师",
+    disease_pattern_analyzer_persona,
+    disease_pattern_analyzer_example,
+    disease_pattern_analyzer_criteria,
+)
+
+# 创建数据质量控制专家
+data_quality_specialist_persona = (
+    '您是专门分析检验数据质量和可靠性的专家。'
+    '您帮助识别数据中的异常值、变异性和潜在错误，并提供质量改进建议。'
+    '您需要将内容保存为txt文件到本地'
+)
+
+data_quality_specialist_example = (
+    '数据质量分析报告\n'
+    '数据完整性评估：\n'
+    '- 缺失数据情况：[分析]\n'
+    '- 数据覆盖率：[评估]\n'
+    '- 时间序列完整性：[评估]\n'
+    '异常值分析：\n'
+    '1. [异常值1]：[详细描述]\n'
+    '2. [异常值2]：[详细描述]\n'
+    '数据变异性：\n'
+    '- 生物学变异评估：[分析结果]\n'
+    '- 分析学变异评估：[分析结果]\n'
+    '- 前分析变异评估：[分析结果]\n'
+    '潜在干扰因素：\n'
+    '- [因素1]：[影响分析]\n'
+    '- [因素2]：[影响分析]\n'
+    '质量改进建议：\n'
+    '1. [建议1]：[详细描述]\n'
+    '2. [建议2]：[详细描述]\n'
+)
+
+data_quality_specialist_criteria = textwrap.dedent(
+    """\
+    1. 评估数据的完整性和一致性
+    2. 识别潜在的异常值和离群点
+    3. 分析生物学和分析学变异来源
+    4. 评估可能的干扰和混淆因素
+    5. 提供改进数据质量的具体建议
+    """
+)
+
+data_quality_specialist = make_lab_analysis_agent(
+    "数据质量控制专家",
+    data_quality_specialist_persona,
+    data_quality_specialist_example,
+    data_quality_specialist_criteria,
 )
 
 # 创建运动规划师
@@ -209,7 +574,7 @@ exercise_planner_criteria = textwrap.dedent(
     """
 )
 
-exercise_planner = make_weight_management_agent(
+exercise_planner = make_lab_analysis_agent(
     "运动规划师",
     exercise_planner_persona,
     exercise_planner_example,
@@ -254,7 +619,7 @@ behavior_specialist_criteria = textwrap.dedent(
     """
 )
 
-behavior_specialist = make_weight_management_agent(
+behavior_specialist = make_lab_analysis_agent(
     "行为心理专家",
     behavior_specialist_persona,
     behavior_specialist_example,
@@ -316,7 +681,7 @@ data_analyst_criteria = textwrap.dedent(
     """
 )
 
-data_analyst = make_weight_management_agent(
+data_analyst = make_lab_analysis_agent(
     "数据分析师",
     data_analyst_persona,
     data_analyst_example,
@@ -396,7 +761,7 @@ advanced_modeling_criteria = textwrap.dedent(
     """
 )
 
-advanced_modeler = make_weight_management_agent(
+advanced_modeler = make_lab_analysis_agent(
     "高级统计建模专家",
     advanced_modeling_persona,
     advanced_modeling_example,
@@ -468,7 +833,7 @@ bioinformatics_criteria = textwrap.dedent(
     """
 )
 
-bioinformatics_analyst = make_weight_management_agent(
+bioinformatics_analyst = make_lab_analysis_agent(
     "生物信息学分析专家",
     bioinformatics_persona,
     bioinformatics_example,
@@ -536,7 +901,7 @@ digital_twin_criteria = textwrap.dedent(
     """
 )
 
-digital_twin_specialist = make_weight_management_agent(
+digital_twin_specialist = make_lab_analysis_agent(
     "数字孪生模拟专家",
     digital_twin_persona,
     digital_twin_example,
@@ -581,7 +946,7 @@ plan_designer_criteria = textwrap.dedent(
     """
 )
 
-plan_designer = make_weight_management_agent(
+plan_designer = make_lab_analysis_agent(
     "综合方案设计师",
     plan_designer_persona,
     plan_designer_example,
@@ -640,7 +1005,7 @@ data_generator_criteria = textwrap.dedent(
     """
 )
 
-data_generator = make_weight_management_agent(
+data_generator = make_lab_analysis_agent(
     "示例数据生成器",
     data_generator_persona,
     data_generator_example,
@@ -654,46 +1019,43 @@ model = ModelFactory.create(
     model_config_dict=ChatGPTConfig(temperature=0.2).as_dict())
 
 workforce = Workforce(
-    '体重管理专家团队',
+    '检验科数据分析专家团队',
     coordinator_agent_kwargs = {"model": model},
     task_agent_kwargs = {"model": model},
 )
 workforce.add_single_agent_worker(
-    '示例数据生成器：创建用于分析的体重管理数据',
-    worker=data_generator,
+    '检验数据生成器：创建用于分析的模拟检验数据',
+    worker=lab_data_generator,
 ).add_single_agent_worker(
-    '用户信息分析师：分析用户基本信息和健康数据',
-    worker=profile_analyzer,
+    '患者基本信息分析师：分析患者基本信息和临床数据',
+    worker=patient_analyzer,
 ).add_single_agent_worker(
-    '饮食分析师：分析用户饮食结构和营养摄入',
-    worker=diet_analyzer,
+    '检验指标分析师：分析检验结果和临床意义',
+    worker=lab_indicator_analyzer,
 ).add_single_agent_worker(
-    '运动规划师：设计个性化运动方案',
-    worker=exercise_planner,
+    '疾病模式分析师：从检验结果识别疾病特征模式',
+    worker=disease_pattern_analyzer,
 ).add_single_agent_worker(
-    '行为心理专家：分析心理因素并提供行为改变策略',
-    worker=behavior_specialist,
+    '数据质量控制专家：评估数据质量和可靠性',
+    worker=data_quality_specialist,
 ).add_single_agent_worker(
-    '数据分析师：分析用户体重变化数据和趋势',
+    '检验数据分析师：分析数据趋势和模式',
     worker=data_analyst,
 ).add_single_agent_worker(
-    '高级统计建模专家：构建复杂预测模型和多因素分析',
-    worker=advanced_modeler,
+    '分子诊断分析专家：分析分子检测数据',
+    worker=molecular_diagnostics_analyst,
 ).add_single_agent_worker(
-    '生物信息学分析专家：分析基因组和微生物组数据',
-    worker=bioinformatics_analyst,
+    '参考值研究专家：研究检验参考区间和临界值',
+    worker=reference_value_researcher,
 ).add_single_agent_worker(
-    '数字孪生模拟专家：创建个体虚拟生理模型',
-    worker=digital_twin_specialist,
-).add_single_agent_worker(
-    '综合方案设计师：整合各专家意见设计综合方案',
-    worker=plan_designer,
+    '科研灵感生成器：提出创新研究方向和假设',
+    worker=research_inspiration_generator,
 )
 
 # 更新处理函数
-def process_weight_management_case(user_info: str, input_csv_path: str = None) -> str:
+def process_lab_data_analysis(user_info: str, input_csv_path: str = None) -> str:
     """
-    通过体重管理专家团队处理用户信息
+    通过检验科数据分析专家团队处理检验数据
     
     参数：
         user_info (str): 用户提供的信息
@@ -735,78 +1097,225 @@ def process_weight_management_case(user_info: str, input_csv_path: str = None) -
 
 # 示例用户信息
 example_user_info = """
-个人基本信息：
-- 姓名：张先生
-- 年龄：32岁
-- 性别：男
-- 身高：178cm
-- 当前体重：85kg
-- 职业：IT程序员，工作日久坐8-10小时
-
-体重历史：
-- 大学毕业时（22岁）：70kg
-- 28岁时：75kg
-- 30岁时：80kg
-- 最近两年增重5kg
-
-健康状况：
-- 无慢性疾病
-- 轻度高血压（130/85mmHg）
-- 最近体检显示轻度脂肪肝
-- 经常感到疲劳，尤其是下午
-
-生活习惯：
-- 饮食：工作日多外卖，周末偶尔下厨；喜欢高碳水、高脂肪食物；每周点外卖4-5次
-- 早餐常吃油条、豆浆或者不吃
-- 午餐通常是快餐（盖浇饭、炒饭等）
-- 晚餐较晚（晚上8点后），常吃得较多
-- 零食：喜欢碳酸饮料、薯片、巧克力等，工作压力大时会吃更多零食
-- 饮水量：每天约1000ml
-- 饮酒：社交场合偶尔饮酒，每周1-2次
-
-- 运动：几乎没有固定运动习惯；偶尔周末打打篮球（每月1-2次）
-- 步数：工作日平均3000步/天
-- 尝试过健身但坚持不下来，最长坚持过2个月
-
-- 睡眠：工作日平均6小时/晚，周末7-8小时
-- 经常熬夜到凌晨1点以后
-- 睡眠质量一般，偶尔失眠
-
-心理状态：
-- 工作压力大，经常感到焦虑
-- 有通过进食缓解压力的习惯
-- 对体重增加感到忧虑但缺乏足够动力改变
-- 曾尝试多次减重但都半途而废
-
-目标：
-- 希望在6个月内减至75kg
-- 改善体质，增加精力
-- 建立健康可持续的生活方式
-- 能够长期保持健康体重
+检验数据分析需求：
+- 目标：分析不同疾病患者的实验室检验结果，发现潜在的科研灵感和新的研究方向
+- 数据类型：多种检验项目的CSV格式数据
+- 关注疾病：肝病、肾病、心血管疾病、糖尿病等常见疾病
+- 期望发现：检验指标间的新型关联模式、疾病早期预警指标、新型生物标志物组合
+- 分析深度：需要包括基础统计分析、高级统计建模和机器学习方法
+- 科研导向：希望发现具有临床转化价值的研究方向
+- 数据格式要求：系统应能处理不同格式的CSV文件，包括不同的分隔符和字段命名方式
 """
 
-# 创建示例CSV文件路径函数
-def create_example_weight_csv():
+# 创建示例检验CSV文件函数
+def create_example_lab_csv():
     """
-    创建示例体重管理CSV文件作为输入示例
+    创建示例检验数据CSV文件作为输入示例
     """
     code = """
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
+import random
 
 # 设置随机种子以确保可重现性
 np.random.seed(42)
 
-# 创建日期范围 - 过去180天
-end_date = datetime.now().date()
-start_date = end_date - timedelta(days=180)
-dates = pd.date_range(start=start_date, end=end_date, freq='D')
+# 生成病人ID
+num_patients = 200
+patient_ids = [f'P{str(i).zfill(4)}' for i in range(1, num_patients + 1)]
 
-# 初始化数据框
-data = pd.DataFrame(index=dates)
-data.index.name = 'date'
+# 生成检验日期 - 过去30天
+end_date = datetime.now().date()
+start_date = end_date - timedelta(days=30)
+date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+
+# 创建疾病类型
+disease_categories = ['肝病', '肾病', '糖尿病', '心血管疾病', '健康对照']
+disease_probs = [0.2, 0.2, 0.2, 0.2, 0.2]  # 各疾病概率
+patient_diseases = np.random.choice(disease_categories, size=num_patients, p=disease_probs)
+patient_disease_dict = {patient_ids[i]: patient_diseases[i] for i in range(num_patients)}
+
+# 创建人口统计学数据
+ages = np.random.normal(55, 15, num_patients)  # 平均55岁，标准差15
+ages = np.clip(ages, 18, 90).astype(int)  # 限制在18-90岁
+
+genders = np.random.choice(['男', '女'], size=num_patients)
+patient_demographics = pd.DataFrame({
+    '患者ID': patient_ids,
+    '年龄': ages,
+    '性别': genders,
+    '疾病类型': patient_diseases
+})
+
+# 保存人口统计学数据
+demo_path = 'patient_demographics.csv'
+patient_demographics.to_csv(demo_path, index=False)
+print(f"人口统计学数据已保存至: {os.path.abspath(demo_path)}")
+
+# 设置各疾病检验指标特征
+def generate_lab_values(disease_type, num_records):
+    base_values = {
+        # 肝功能
+        'ALT': (40, 10),  # 正常值范围: 9-50 U/L
+        'AST': (35, 8),   # 正常值范围: 15-40 U/L
+        'GGT': (45, 12),  # 正常值范围: 10-60 U/L
+        'ALP': (100, 20), # 正常值范围: 45-125 U/L
+        'TBIL': (15, 5),  # 正常值范围: 5-21 umol/L
+        'DBIL': (4, 1),   # 正常值范围: 0-7 umol/L
+        'TP': (70, 5),    # 正常值范围: 65-85 g/L
+        'ALB': (45, 3),   # 正常值范围: 40-55 g/L
+        
+        # 肾功能
+        'CREA': (80, 15), # 正常值范围: 57-97 umol/L
+        'BUN': (5, 1),    # 正常值范围: 3.1-8.0 mmol/L
+        'UA': (320, 50),  # 正常值范围: 208-428 umol/L
+        'eGFR': (90, 10), # 正常值范围: >90 mL/min/1.73m²
+        
+        # 血糖
+        'GLU': (5.2, 0.5), # 正常值范围: 3.9-6.1 mmol/L
+        'HbA1c': (5.5, 0.3), # 正常值范围: 4.0-6.0%
+        
+        # 血脂
+        'CHOL': (4.5, 0.5), # 正常值范围: 2.9-5.2 mmol/L
+        'TG': (1.5, 0.3),   # 正常值范围: 0.45-1.7 mmol/L
+        'HDL': (1.3, 0.2),  # 正常值范围: 1.16-1.55 mmol/L
+        'LDL': (2.8, 0.4),  # 正常值范围: 2.1-3.1 mmol/L
+        
+        # 心肌标志物
+        'cTnI': (0.01, 0.005), # 正常值范围: <0.04 ng/mL
+        'CK_MB': (3, 1),       # 正常值范围: 0-5 ng/mL
+        'NT_proBNP': (50, 20), # 正常值范围: <125 pg/mL
+        
+        # 血常规
+        'WBC': (6.5, 1),    # 正常值范围: 4-10 *10^9/L
+        'RBC': (4.5, 0.3),  # 正常值范围: 3.5-5.5 *10^12/L
+        'HGB': (140, 10),   # 正常值范围: 120-160 g/L
+        'PLT': (250, 30),   # 正常值范围: 100-300 *10^9/L
+        'NEUT': (60, 5),    # 正常值范围: 50-70%
+        'LYMPH': (30, 4),   # 正常值范围: 20-40%
+        
+        # 炎症标志物
+        'CRP': (3, 1),      # 正常值范围: 0-5 mg/L
+        'ESR': (10, 3),     # 正常值范围: 0-15 mm/h
+        'PCT': (0.05, 0.02) # 正常值范围: <0.1 ng/mL
+    }
+    
+    # 根据疾病类型调整参数
+    if disease_type == '肝病':
+        # 肝功能异常
+        adjustments = {
+            'ALT': (120, 40),
+            'AST': (100, 35),
+            'GGT': (150, 50),
+            'ALP': (180, 40),
+            'TBIL': (35, 15),
+            'DBIL': (12, 5),
+            'TP': (60, 8),
+            'ALB': (35, 5)
+        }
+    elif disease_type == '肾病':
+        # 肾功能异常
+        adjustments = {
+            'CREA': (180, 50),
+            'BUN': (12, 3),
+            'UA': (450, 70),
+            'eGFR': (45, 15),
+            'TP': (60, 8),
+            'ALB': (35, 5)
+        }
+    elif disease_type == '糖尿病':
+        # 血糖异常
+        adjustments = {
+            'GLU': (9.5, 2),
+            'HbA1c': (8.5, 1.5),
+            'CHOL': (5.5, 1),
+            'TG': (2.5, 1),
+            'HDL': (0.9, 0.2),
+            'LDL': (3.5, 0.8)
+        }
+    elif disease_type == '心血管疾病':
+        # 心血管指标异常
+        adjustments = {
+            'CHOL': (6, 1),
+            'TG': (2.8, 1.2),
+            'HDL': (0.8, 0.2),
+            'LDL': (4, 1),
+            'cTnI': (0.1, 0.08),
+            'CK_MB': (8, 3),
+            'NT_proBNP': (500, 200)
+        }
+    elif disease_type == '健康对照':
+        # 基本正常值，微小波动
+        adjustments = {}
+    
+    # 更新基础值
+    for key, value in adjustments.items():
+        base_values[key] = value
+    
+    # 为每个检验指标生成数值
+    lab_data = {}
+    for indicator, (mean, std) in base_values.items():
+        # 添加随机波动
+        values = np.random.normal(mean, std, num_records)
+        # 确保没有负值
+        values = np.maximum(values, 0)
+        lab_data[indicator] = values
+        
+    return lab_data
+
+# 生成检验数据
+lab_records = []
+
+for patient_id in patient_ids:
+    disease = patient_disease_dict[patient_id]
+    
+    # 每个患者有1-3条记录
+    num_records = np.random.randint(1, 4)
+    record_dates = np.random.choice(date_range, size=num_records, replace=False)
+    record_dates = sorted(record_dates)
+    
+    lab_values = generate_lab_values(disease, num_records)
+    
+    for i, date in enumerate(record_dates):
+        lab_records.append({
+            '患者ID': patient_id,
+            '检验日期': date,
+            'ALT': lab_values['ALT'][i],
+            'AST': lab_values['AST'][i],
+            'GGT': lab_values['GGT'][i],
+            'ALP': lab_values['ALP'][i],
+            'TBIL': lab_values['TBIL'][i],
+            'DBIL': lab_values['DBIL'][i],
+            'TP': lab_values['TP'][i],
+            'ALB': lab_values['ALB'][i],
+            'CREA': lab_values['CREA'][i],
+            'BUN': lab_values['BUN'][i],
+            'UA': lab_values['UA'][i],
+            'eGFR': lab_values['eGFR'][i],
+            'GLU': lab_values['GLU'][i],
+            'HbA1c': lab_values['HbA1c'][i],
+            'CHOL': lab_values['CHOL'][i],
+            'TG': lab_values['TG'][i],
+            'HDL': lab_values['HDL'][i],
+            'LDL': lab_values['LDL'][i],
+            'CK_MB': lab_values['CK_MB'][i],
+            'NT_proBNP': lab_values['NT_proBNP'][i],
+            'WBC': lab_values['WBC'][i],
+            'RBC': lab_values['RBC'][i],
+            'HGB': lab_values['HGB'][i],
+            'PLT': lab_values['PLT'][i],
+            'NEUT': lab_values['NEUT'][i],
+            'LYMPH': lab_values['LYMPH'][i],
+            'CRP': lab_values['CRP'][i],
+            'ESR': lab_values['ESR'][i],
+            'PCT': lab_values['PCT'][i]
+        })
+
+# 创建DataFrame
+df = pd.DataFrame(lab_records)
+df.index.name = 'date'
 
 # 用户基本信息
 user_id = "user_001"
@@ -817,140 +1326,140 @@ initial_weight = 80  # kg
 target_weight = 75  # kg
 
 # 生成体重数据 - 添加一些真实波动和缓慢增加趋势
-weight_trend = np.linspace(initial_weight, initial_weight + 5, len(dates))  # 逐渐增加5kg
-daily_fluctuation = np.random.normal(0, 0.3, len(dates))  # 日常波动
-weekend_effect = np.array([0.2 if d.weekday() >= 5 else 0 for d in dates])  # 周末增加
+weight_trend = np.linspace(initial_weight, initial_weight + 5, len(df))  # 逐渐增加5kg
+daily_fluctuation = np.random.normal(0, 0.3, len(df))  # 日常波动
+weekend_effect = np.array([0.2 if d.weekday() >= 5 else 0 for d in df.index])  # 周末增加
 weight = weight_trend + daily_fluctuation + weekend_effect
-data['weight'] = np.round(weight, 1)
+df['weight'] = np.round(weight, 1)
 
 # 生成卡路里摄入量
 base_calories = 2200  # 基础卡路里
 # 工作日和周末的不同模式
 daily_pattern = np.array([
     base_calories - 200 if d.weekday() < 5 else base_calories + 400 
-    for d in dates
+    for d in df.index
 ])
 # 添加随机变化
-calorie_variation = np.random.normal(0, 200, len(dates))
+calorie_variation = np.random.normal(0, 200, len(df))
 calories = daily_pattern + calorie_variation
-data['calories_intake'] = np.round(calories).astype(int)
+df['calories_intake'] = np.round(calories).astype(int)
 
 # 生成蛋白质、碳水和脂肪摄入
-data['protein_g'] = np.round(data['calories_intake'] * 0.15 / 4 + np.random.normal(0, 10, len(dates)))
-data['carbs_g'] = np.round(data['calories_intake'] * 0.55 / 4 + np.random.normal(0, 20, len(dates)))
-data['fat_g'] = np.round(data['calories_intake'] * 0.30 / 9 + np.random.normal(0, 8, len(dates)))
+df['protein_g'] = np.round(df['calories_intake'] * 0.15 / 4 + np.random.normal(0, 10, len(df)))
+df['carbs_g'] = np.round(df['calories_intake'] * 0.55 / 4 + np.random.normal(0, 20, len(df)))
+df['fat_g'] = np.round(df['calories_intake'] * 0.30 / 9 + np.random.normal(0, 8, len(df)))
 
 # 生成活动水平(步数)
 base_steps = 3000  # 基础步数
 # 工作日和周末的不同模式
 daily_steps = np.array([
     base_steps if d.weekday() < 5 else base_steps + np.random.randint(1000, 3000) 
-    for d in dates
+    for d in df.index
 ])
 # 偶尔的高活动日
-high_activity_days = np.random.randint(0, len(dates), size=15)  # 15天高活动
+high_activity_days = np.random.randint(0, len(df), size=15)  # 15天高活动
 for day in high_activity_days:
     daily_steps[day] += np.random.randint(4000, 8000)
-data['steps'] = daily_steps.astype(int)
+df['steps'] = daily_steps.astype(int)
 
 # 生成睡眠时间
 base_sleep = 6  # 基础睡眠时间(小时)
 # 工作日和周末的不同模式
 sleep_pattern = np.array([
     base_sleep if d.weekday() < 5 else base_sleep + 1.5
-    for d in dates
+    for d in df.index
 ])
 # 添加随机变化
-sleep_variation = np.random.normal(0, 0.7, len(dates))
-data['sleep_hours'] = np.round(sleep_pattern + sleep_variation, 1)
+sleep_variation = np.random.normal(0, 0.7, len(df))
+df['sleep_hours'] = np.round(sleep_pattern + sleep_variation, 1)
 
 # 生成压力水平 (1-10)
 base_stress = 7  # 基础压力水平
 # 工作日和周末的不同模式
 stress_pattern = np.array([
     base_stress if d.weekday() < 5 else base_stress - 2
-    for d in dates
+    for d in df.index
 ])
 # 添加随机变化与偶尔的高压力日
-stress_variation = np.random.normal(0, 1, len(dates))
-high_stress_days = np.random.randint(0, len(dates), size=20)  # 20天高压力
+stress_variation = np.random.normal(0, 1, len(df))
+high_stress_days = np.random.randint(0, len(df), size=20)  # 20天高压力
 for day in high_stress_days:
     stress_variation[day] += 2
-data['stress_level'] = np.clip(np.round(stress_pattern + stress_variation), 1, 10).astype(int)
+df['stress_level'] = np.clip(np.round(stress_pattern + stress_variation), 1, 10).astype(int)
 
 # 生成水摄入量
 base_water = 1000  # 基础水摄入量(ml)
-water_variation = np.random.normal(0, 300, len(dates))
-data['water_ml'] = np.round(base_water + water_variation, -1).astype(int)
+water_variation = np.random.normal(0, 300, len(df))
+df['water_ml'] = np.round(base_water + water_variation, -1).astype(int)
 
 # 生成锻炼分钟数
 # 大多数日子没有锻炼
-exercise_minutes = np.zeros(len(dates))
+exercise_minutes = np.zeros(len(df))
 # 随机选择一些日子进行锻炼
-exercise_days = np.random.choice([0, 1], size=len(dates), p=[0.85, 0.15])
+exercise_days = np.random.choice([0, 1], size=len(df), p=[0.85, 0.15])
 exercise_minutes[exercise_days == 1] = np.random.randint(20, 90, size=sum(exercise_days))
-data['exercise_minutes'] = exercise_minutes.astype(int)
+df['exercise_minutes'] = exercise_minutes.astype(int)
 
 # 生成锻炼类型
 exercise_types = ['无', '跑步', '健身房', '游泳', '骑行', '瑜伽', '篮球']
 # 为每天分配锻炼类型，没有锻炼的日子为"无"
-data['exercise_type'] = ['无'] * len(dates)
-for i in range(len(dates)):
-    if data.loc[data.index[i], 'exercise_minutes'] > 0:
-        data.loc[data.index[i], 'exercise_type'] = np.random.choice(exercise_types[1:])
+df['exercise_type'] = ['无'] * len(df)
+for i in range(len(df)):
+    if df.loc[df.index[i], 'exercise_minutes'] > 0:
+        df.loc[df.index[i], 'exercise_type'] = np.random.choice(exercise_types[1:])
 
 # 生成早餐、午餐、晚餐的规律性 (0-不规律, 1-规律)
-meal_regularity = np.random.choice([0, 1], size=(len(dates), 3), p=[0.3, 0.7])
-data['breakfast_regular'] = meal_regularity[:, 0]
-data['lunch_regular'] = meal_regularity[:, 1]
-data['dinner_regular'] = meal_regularity[:, 2]
+meal_regularity = np.random.choice([0, 1], size=(len(df), 3), p=[0.3, 0.7])
+df['breakfast_regular'] = meal_regularity[:, 0]
+df['lunch_regular'] = meal_regularity[:, 1]
+df['dinner_regular'] = meal_regularity[:, 2]
 
 # 生成晚餐时间
 base_dinner_time = 20  # 基础晚餐时间 (24小时制)
-dinner_variation = np.random.normal(0, 1, len(dates))
-data['dinner_time'] = np.clip(np.round(base_dinner_time + dinner_variation, 1), 17, 23)
+dinner_variation = np.random.normal(0, 1, len(df))
+df['dinner_time'] = np.clip(np.round(base_dinner_time + dinner_variation, 1), 17, 23)
 
 # 生成加工食品比例
 base_processed_food = 0.6  # 基础加工食品比例
-processed_variation = np.random.normal(0, 0.15, len(dates))
-data['processed_food_ratio'] = np.clip(base_processed_food + processed_variation, 0.1, 1.0)
-data['processed_food_ratio'] = np.round(data['processed_food_ratio'], 2)
+processed_variation = np.random.normal(0, 0.15, len(df))
+df['processed_food_ratio'] = np.clip(base_processed_food + processed_variation, 0.1, 1.0)
+df['processed_food_ratio'] = np.round(df['processed_food_ratio'], 2)
 
 # 生成饮酒量(标准杯)
-alcohol = np.zeros(len(dates))
+alcohol = np.zeros(len(df))
 # 偶尔饮酒的日子
-alcohol_days = np.random.choice([0, 1], size=len(dates), p=[0.8, 0.2])
+alcohol_days = np.random.choice([0, 1], size=len(df), p=[0.8, 0.2])
 alcohol[alcohol_days == 1] = np.random.randint(1, 5, size=sum(alcohol_days))
-data['alcohol_units'] = alcohol.astype(int)
+df['alcohol_units'] = alcohol.astype(int)
 
 # 生成零食卡路里
 base_snack = 300  # 基础零食卡路里
 # 压力高的日子零食增加
-snack_calories = base_snack + data['stress_level'] * 30 + np.random.normal(0, 100, len(dates))
-data['snack_calories'] = np.round(snack_calories).astype(int)
+snack_calories = base_snack + df['stress_level'] * 30 + np.random.normal(0, 100, len(df))
+df['snack_calories'] = np.round(snack_calories).astype(int)
 
 # 添加用户ID和基本信息作为常量列
-data['user_id'] = user_id
-data['age'] = age
-data['gender'] = gender
-data['height_cm'] = height
-data['target_weight_kg'] = target_weight
+df['user_id'] = user_id
+df['age'] = age
+df['gender'] = gender
+df['height_cm'] = height
+df['target_weight_kg'] = target_weight
 
 # 计算BMI
-data['bmi'] = np.round(data['weight'] / ((height/100) ** 2), 1)
+df['bmi'] = np.round(df['weight'] / ((height/100) ** 2), 1)
 
 # 计算目标差异
-data['weight_to_target'] = np.round(data['weight'] - target_weight, 1)
+df['weight_to_target'] = np.round(df['weight'] - target_weight, 1)
 
 # 保存CSV
 output_path = 'weight_management_data.csv'
-data.to_csv(output_path)
+df.to_csv(output_path)
 print(f"数据已保存到: {os.path.abspath(output_path)}")
-print(f"数据形状: {data.shape}")
+print(f"数据形状: {df.shape}")
 print("\\n数据预览:")
-print(data.head())
+print(df.head())
 print("\\n数据描述统计:")
-print(data.describe())
+print(df.describe())
 
 # 返回文件路径
 print(f"\\n数据文件路径: {os.path.abspath(output_path)}")
@@ -961,7 +1470,7 @@ print(f"\\n数据文件路径: {os.path.abspath(output_path)}")
 # 创建验证CSV文件函数
 def validate_csv_file(file_path: str) -> str:
     """
-    生成用于验证CSV文件的Python代码，支持任意格式的CSV文件
+    生成用于验证检验CSV文件的Python代码，支持任意格式的CSV文件
     
     参数:
         file_path (str): CSV文件路径
@@ -1038,7 +1547,7 @@ def try_read_csv(file_path):
 
 # 主要分析过程
 try:
-    print(f"分析CSV文件: """ + file_path + """")
+    print(f"分析检验CSV文件: """ + file_path + """")
     
     # 读取文件
     df = try_read_csv(""" + f'"{file_path}"' + """)
@@ -1068,7 +1577,7 @@ try:
             
         # 查找日期列
         date_cols = []
-        date_patterns = ['date', 'time', 'day', 'month', 'year', '日期', '时间', '日', '月', '年']
+        date_patterns = ['date', 'time', 'day', 'month', 'year', '日期', '时间', '日', '月', '年', '检验日期', 'test_date']
         
         for col in df.columns:
             if any(pattern in col.lower() for pattern in date_patterns) or df[col].dtype == 'datetime64[ns]':
@@ -1098,44 +1607,42 @@ try:
                 except:
                     print(f"- {col}: 无法解析为日期")
         
-        # 查找体重和健康指标列
-        weight_cols = []
-        health_cols = []
-        weight_patterns = ['weight', 'mass', 'kg', '体重', '重量']
-        health_patterns = ['bmi', 'calories', 'energy', 'height', 'step', 'sleep', 'stress', 
-                          '热量', '卡路里', '身高', '步数', '睡眠', '压力']
-                          
+        # 查找ID列
+        id_cols = []
+        id_patterns = ['id', 'patient', 'subject', 'person', '患者', '编号', 'patient_id', '患者ID']
+        
+        for col in df.columns:
+            col_lower = col.lower()
+            if any(pattern in col_lower for pattern in id_patterns):
+                id_cols.append(col)
+        
+        # 显示ID列
+        if id_cols:
+            print("\\n找到可能的ID列:")
+            for col in id_cols:
+                unique_count = df[col].nunique()
+                print(f"- {col}: {unique_count} 个唯一值")
+        
+        # 查找数值型检验指标列
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         
-        for col in numeric_cols:
-            col_lower = col.lower()
-            if any(pattern in col_lower for pattern in weight_patterns):
-                weight_cols.append(col)
-            elif any(pattern in col_lower for pattern in health_patterns):
-                health_cols.append(col)
+        # 排除ID和日期列等非检验指标
+        exclude_patterns = ['id', 'date', 'time', 'age', 'year', '年龄', '日期', '时间']
+        lab_cols = [col for col in numeric_cols if not any(pattern in col.lower() for pattern in exclude_patterns)]
         
-        # 显示体重列
-        if weight_cols:
-            print("\\n找到可能的体重数据列:")
-            for col in weight_cols:
+        # 显示检验指标列的基本统计
+        if lab_cols:
+            print(f"\\n找到 {len(lab_cols)} 个可能的检验指标列:")
+            # 只显示前10个指标避免输出过长
+            for col in lab_cols[:10]:
                 print(f"- {col}:")
                 print(f"  平均值: {df[col].mean():.2f}")
-                print(f"  最小值: {df[col].min()}")
-                print(f"  最大值: {df[col].max()}")
-        
-        # 显示健康指标列
-        if health_cols:
-            print("\\n找到可能的健康指标列:")
-            for col in health_cols:
-                print(f"- {col}:")
-                print(f"  平均值: {df[col].mean():.2f}")
-                print(f"  最小值: {df[col].min()}")
-                print(f"  最大值: {df[col].max()}")
-        
-        # 数据统计
-        print("\\n数据统计摘要:")
-        if len(numeric_cols) > 0:
-            print(df[numeric_cols].describe().to_string())
+                print(f"  中位数: {df[col].median():.2f}")
+                print(f"  最小值: {df[col].min():.2f}")
+                print(f"  最大值: {df[col].max():.2f}")
+            
+            if len(lab_cols) > 10:
+                print(f"  ... 还有 {len(lab_cols) - 10} 个指标未显示")
         
         # 缺失值检查
         missing = df.isnull().sum()
@@ -1146,6 +1653,28 @@ try:
         else:
             print("\\n数据完整，无缺失值")
         
+        # 初步异常值检查（超出正常医学参考范围的数据）
+        # 这里只是示例性地检查几个常见指标
+        reference_ranges = {
+            'ALT': (0, 50),      # ALT正常范围0-50 U/L
+            'AST': (0, 40),      # AST正常范围0-40 U/L
+            'CREA': (44, 133),   # 肌酐正常范围44-133 umol/L
+            'GLU': (3.9, 6.1),   # 空腹血糖正常范围3.9-6.1 mmol/L
+            'WBC': (4, 10),      # 白细胞正常范围4-10 *10^9/L
+            'HGB': (120, 160)    # 血红蛋白正常范围120-160 g/L
+        }
+        
+        # 检查所有列名中可能包含这些指标的列
+        print("\\n潜在异常值检查:")
+        for ref_name, (lower, upper) in reference_ranges.items():
+            matching_cols = [col for col in lab_cols if ref_name.lower() in col.lower()]
+            for col in matching_cols:
+                if df[col].notnull().any():
+                    below = (df[col] < lower).sum()
+                    above = (df[col] > upper).sum()
+                    if below > 0 or above > 0:
+                        print(f"- {col}: {below} 个值低于 {lower}, {above} 个值高于 {upper}")
+        
         # 保存分析结果
         info = {
             "file_path": """ + f'"{file_path}"' + """,
@@ -1153,8 +1682,8 @@ try:
             "columns": len(df.columns),
             "column_names": list(df.columns),
             "possible_date_columns": date_cols,
-            "possible_weight_columns": weight_cols,
-            "possible_health_columns": health_cols
+            "possible_id_columns": id_cols,
+            "possible_lab_columns": lab_cols
         }
         
         print("\\nCSV文件有效，可以进行后续分析")
@@ -1177,20 +1706,20 @@ except Exception as e:
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description='体重管理专家团队分析系统')
-    parser.add_argument('--user_info', type=str, help='用户信息文件路径', default=None)
-    parser.add_argument('--csv_file', type=str, help='用户提供的CSV数据文件路径', default=None)
-    parser.add_argument('--generate_sample_csv', action='store_true', help='是否只生成示例CSV数据而不执行完整分析')
+    parser = argparse.ArgumentParser(description='检验科数据分析专家团队系统')
+    parser.add_argument('--user_info', type=str, help='用户需求信息文件路径', default=None)
+    parser.add_argument('--csv_file', type=str, help='用户提供的检验CSV数据文件路径', default=None)
+    parser.add_argument('--generate_sample_csv', action='store_true', help='是否只生成示例检验CSV数据而不执行完整分析')
     args = parser.parse_args()
     
     # 只生成示例CSV
     if args.generate_sample_csv:
         from camel.toolkits import CodeExecutionToolkit
         
-        print("正在生成示例CSV数据文件...")
+        print("正在生成示例检验CSV数据文件...")
         code_toolkit = CodeExecutionToolkit(verbose=True)
-        result = code_toolkit.execute_code(create_example_weight_csv())
-        print("示例CSV数据生成完成。")
+        result = code_toolkit.execute_code(create_example_lab_csv())
+        print("示例检验CSV数据生成完成。")
         exit(0)
     
     # 验证用户提供的CSV文件
@@ -1211,7 +1740,7 @@ if __name__ == "__main__":
     user_text = ""
     if args.user_info:
         if not os.path.exists(args.user_info):
-            print(f"错误：提供的用户信息文件 '{args.user_info}' 不存在")
+            print(f"错误：提供的用户需求信息文件 '{args.user_info}' 不存在")
             exit(1)
         
         with open(args.user_info, 'r', encoding='utf-8') as f:
@@ -1220,7 +1749,7 @@ if __name__ == "__main__":
         user_text = example_user_info
     
     # 执行分析
-    print("正在进行体重管理分析...")
-    result = process_weight_management_case(user_text, args.csv_file)
+    print("正在进行检验数据分析...")
+    result = process_lab_data_analysis(user_text, args.csv_file)
     print("\n===== 分析结果 =====\n")
     print(result)
