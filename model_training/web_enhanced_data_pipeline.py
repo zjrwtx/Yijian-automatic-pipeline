@@ -29,7 +29,7 @@ class WebEnhancedDataPipeline:
         )
         
         self.agent = ChatAgent(
-            system_message="你是一个专门用于生成高质量合成数据的助手。你需要根据给定的主题和参考内容生成问题和答案对。",
+            system_message="你是一个专门用于生成高质量合成数据的助手。你需要根据给定的主题和参考内容生成问题和答案对。数学公式必须使用LaTeX格式。确保数据的生成格式保持一致：JSON格式，以问题为键，答案为值。",
             model=self.model
         )
         
@@ -75,33 +75,6 @@ class WebEnhancedDataPipeline:
             subtopics.extend(more_subtopics[:remaining])
         
         return subtopics[:num_subtopics]
-    
-    def find_relevant_urls(self, topic: str, num_urls: int = 3) -> List[str]:
-        """
-        为给定主题找到相关的URL
-        
-        Args:
-            topic: 主题
-            num_urls: 要返回的URL数量
-            
-        Returns:
-            相关URL列表
-        """
-        prompt = f"""
-        请为以下主题提供{num_urls}个可以获取优质信息的网页URL：
-        
-        主题：{topic}
-        
-        请直接返回URL列表，每行一个URL，不要有任何额外的解释。URL必须是真实存在的，完整的网址（包括https://前缀）。
-        """
-        
-        response = self.agent.step(prompt)
-        urls = [
-            line.strip() for line in response.msgs[0].content.strip().split("\n")
-            if line.strip() and line.strip().startswith("http")
-        ]
-        
-        return urls[:num_urls]
     
     def crawl_url(self, url: str) -> str:
         """
@@ -153,8 +126,16 @@ class WebEnhancedDataPipeline:
             ...
         }}
         
-        确保问题具有挑战性和多样性，答案简洁明了。如果是数学问题，可以使用LaTeX格式。
+        确保问题具有挑战性和多样性，答案简洁明了。
+        
+        如果是数学问题，必须使用LaTeX格式来表示数学公式，例如：
+        {{
+            "What is the coefficient of $x^2y^6$ in the expansion of $\\\\left(\\\\frac{{3}}{{5}}x-\\\\frac{{y}}{{2}}\\\\right)^8$?": "\\\\frac{{63}}{{400}}",
+            "how many a in banana?": "3"
+        }}
+        
         问题和答案应该直接或间接地基于给定的参考内容。
+        请保持一致的格式和输出风格。
         """
         
         response = self.agent.step(prompt)
@@ -202,7 +183,15 @@ class WebEnhancedDataPipeline:
             ...
         }}
         
-        确保问题具有挑战性和多样性，答案简洁明了。如果是数学问题，可以使用LaTeX格式。
+        确保问题具有挑战性和多样性，答案简洁明了。
+        
+        如果是数学问题，必须使用LaTeX格式来表示数学公式，例如：
+        {{
+            "What is the coefficient of $x^2y^6$ in the expansion of $\\\\left(\\\\frac{{3}}{{5}}x-\\\\frac{{y}}{{2}}\\\\right)^8$?": "\\\\frac{{63}}{{400}}",
+            "how many a in banana?": "3"
+        }}
+        
+        请保持一致的格式和输出风格。
         """
         
         response = self.agent.step(prompt)
@@ -230,6 +219,7 @@ class WebEnhancedDataPipeline:
         self, 
         main_topic: str, 
         total_examples: int, 
+        urls: List[str] = None,
         num_subtopics: int = 5,
         use_web_content: bool = True
     ) -> Dict[str, str]:
@@ -239,6 +229,7 @@ class WebEnhancedDataPipeline:
         Args:
             main_topic: 主要主题
             total_examples: 要生成的总示例数量
+            urls: 用户提供的URL列表
             num_subtopics: 子主题数量
             use_web_content: 是否使用网页内容增强数据生成
             
@@ -260,11 +251,8 @@ class WebEnhancedDataPipeline:
             
             subtopic_data = {}
             
-            # 如果启用了网页内容增强
-            if use_web_content:
-                # 查找相关URL
-                urls = self.find_relevant_urls(subtopic, num_urls=2)
-                
+            # 如果启用了网页内容增强且提供了URL
+            if use_web_content and urls:
                 # 爬取URL内容
                 for url in urls:
                     content = self.crawl_url(url)
@@ -288,7 +276,17 @@ class WebEnhancedDataPipeline:
                 remaining = num_examples - len(subtopic_data)
                 more_prompt = f"""
                 请为子主题"{subtopic}"再生成{remaining}个不同的问题和答案对，确保它们与之前提供的不同。
-                按JSON格式返回。
+                
+                必须按以下JSON格式返回：
+                {{
+                    "问题1": "答案1",
+                    "问题2": "答案2"
+                }}
+                
+                如果是数学问题，必须使用LaTeX格式，例如：
+                {{
+                    "What is the coefficient of $x^2y^6$ in the expansion of $\\\\left(\\\\frac{{3}}{{5}}x-\\\\frac{{y}}{{2}}\\\\right)^8$?": "\\\\frac{{63}}{{400}}"
+                }}
                 """
                 more_response = self.agent.step(more_prompt)
                 try:
@@ -333,6 +331,7 @@ def main():
     parser.add_argument("--output", type=str, default="web_enhanced_data.json", help="输出文件路径")
     parser.add_argument("--api_key", type=str, help="DeepSeek API密钥")
     parser.add_argument("--no_web", action="store_true", help="禁用网页内容增强")
+    parser.add_argument("--urls", type=str, nargs='+', help="要爬取的URL列表")
     
     args = parser.parse_args()
     
@@ -341,6 +340,7 @@ def main():
         main_topic=args.topic,
         total_examples=args.num_examples,
         num_subtopics=args.num_subtopics,
+        urls=args.urls,
         use_web_content=not args.no_web
     )
     

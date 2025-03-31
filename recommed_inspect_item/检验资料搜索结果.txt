@@ -1,0 +1,20 @@
+检验资料搜索结果
+1. 系统性红斑狼疮（SLE）
+   - 来源：UpToDate
+   - 摘要：SLE有临床异质性且缺乏有诊断意义的特征或检查，因此临床医生难以诊断。患者可能仅出现SLE的一些临床特征，这些特征可能与其他自身免疫性疾病、感染性疾病或血液系统疾病相似。
+   - 链接：[资源链接](https://www.uptodate.com/contents/zh-Hans/clinical-manifestations-and-diagnosis-of-systemic-lupus-erythematosus-in-adults)
+
+2. 类风湿性关节炎
+   - 来源：Personal Empowerment Portal
+   - 摘要：即使在类风湿性关节炎的症状看上去已消失或消退时，也必须按医嘱定期服药。医生只有通过体格检查和诊断性影像学和其他检查方法才能知道类风湿性关节炎引起的内在炎症。
+   - 链接：[资源链接](https://www.personalempowermentportal.com/files/PP-XEL-USA-8348-RA-Iceberg-Brochure-Chinese.pdf)
+
+3. 干燥综合征
+   - 来源：UpToDate
+   - 摘要：其他检查包括判断疾病亚组、非药物性和预防性干预、药物治疗的一般方法、器官病变和全身性症状的治疗、特殊注意事项、妊娠期管理、全身麻醉、预后及学会指南链接。
+   - 链接：[资源链接](https://www.uptodate.com/contents/zh-Hans/overview-of-the-management-and-prognosis-of-sjogrens-disease)
+
+4. 混合性结缔组织病
+   - 来源：Diyalabzjg
+   - 摘要：放射学检查缺乏严重的骨侵蚀性病变，但有些患者也可见关节边缘侵蚀和关节破坏。50％-70％患者的类风湿因子(RF)阳性。
+   - 链接：[资源链接](http://www.diyalabzjg.com/uploads/2-1.pdf)

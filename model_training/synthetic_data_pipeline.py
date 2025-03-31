@@ -28,7 +28,7 @@ class SyntheticDataPipeline:
         )
         
         self.agent = ChatAgent(
-            system_message="你是一个专门用于生成高质量合成数据的助手。你需要根据给定的主题生成问题和答案对。",
+            system_message="你是一个专门用于生成高质量合成数据的助手。你需要根据给定的主题生成问题和答案对。数学公式必须使用LaTeX格式。确保数据的生成格式保持一致：JSON格式，以问题为键，答案为值。",
             model=self.model
         )
     
@@ -97,7 +97,15 @@ class SyntheticDataPipeline:
             ...
         }}
         
-        确保问题具有挑战性和多样性，答案简洁明了。如果是数学问题，可以使用LaTeX格式。
+        确保问题具有挑战性和多样性，答案简洁明了。
+        
+        如果是数学问题，必须使用LaTeX格式来表示数学公式，例如：
+        {{
+            "What is the coefficient of $x^2y^6$ in the expansion of $\\\\left(\\\\frac{{3}}{{5}}x-\\\\frac{{y}}{{2}}\\\\right)^8$?": "\\\\frac{{63}}{{400}}",
+            "how many a in banana?": "3"
+        }}
+        
+        请保持一致的格式和输出风格。
         """
         
         response = self.agent.step(prompt)
@@ -154,7 +162,17 @@ class SyntheticDataPipeline:
                 remaining = num_examples - len(subtopic_data)
                 more_prompt = f"""
                 请为子主题"{subtopic}"再生成{remaining}个不同的问题和答案对，确保它们与之前提供的不同。
-                按JSON格式返回。
+                
+                必须按以下JSON格式返回：
+                {{
+                    "问题1": "答案1",
+                    "问题2": "答案2"
+                }}
+                
+                如果是数学问题，必须使用LaTeX格式，例如：
+                {{
+                    "What is the coefficient of $x^2y^6$ in the expansion of $\\\\left(\\\\frac{{3}}{{5}}x-\\\\frac{{y}}{{2}}\\\\right)^8$?": "\\\\frac{{63}}{{400}}"
+                }}
                 """
                 more_response = self.agent.step(more_prompt)
                 try:
